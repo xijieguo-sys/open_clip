@@ -102,6 +102,54 @@ def parse_args(args):
         help="Path to imagenet v2 for conducting zero shot evaluation.",
     )
     parser.add_argument(
+        "--imagenet-a",
+        type=str,
+        default=None,
+        help="Path to imagenet a for conducting zero shot evaluation.",
+    )
+    parser.add_argument(
+        "--imagenet-r",
+        type=str,
+        default=None,
+        help="Path to imagenet r for conducting zero shot evaluation.",
+    )
+    parser.add_argument(
+        "--imagenet-c",
+        type=str,
+        default=None,
+        help="Path to ImageNet-C directory for zero shot evaluation.",
+    )
+    parser.add_argument(
+        "--imagenet-c-corruption",
+        type=str,
+        default="gaussian_noise",
+        help="Corruption type for ImageNet-C (e.g., gaussian_noise, shot_noise, etc.)",
+    )
+    parser.add_argument(
+        "--imagenet-c-severity",
+        type=int,
+        default=1,
+        help="Severity level for ImageNet-C (1-5)",
+    )
+    parser.add_argument(
+        "--cifar10-c",
+        type=str,
+        default=None,
+        help="Path to CIFAR-10-C directory for zero shot evaluation.",
+    )
+    parser.add_argument(
+        "--cifar10-c-corruption",
+        type=str,
+        default="gaussian_noise",
+        help="Corruption type for CIFAR-10-C (e.g., gaussian_noise, shot_noise, etc.)",
+    )
+    parser.add_argument(
+        "--cifar10-c-severity",
+        type=int,
+        default=None,
+        help="Severity level for CIFAR-10-C (1-5, or None for all severities)",
+    )
+    parser.add_argument(
         "--cache-dir",
         type=str,
         default=None,

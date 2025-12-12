@@ -19,6 +19,7 @@ from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler, IterableD
 from torch.utils.data.distributed import DistributedSampler
 from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, url_opener, tar_file_expander, valid_sample
+from open_clip import get_cifar10c_dataloader
 
 try:
     import horovod.torch as hvd
@@ -116,13 +117,20 @@ def get_dataset_size(shards):
 
 
 def get_imagenet(args, preprocess_fns, split):
-    assert split in ["train", "val", "v2"]
+    assert split in ["train", "val", "v2", "a", "r"]
     is_train = split == "train"
     preprocess_train, preprocess_val = preprocess_fns
 
     if split == "v2":
         from imagenetv2_pytorch import ImageNetV2Dataset
         dataset = ImageNetV2Dataset(location=args.imagenet_v2, transform=preprocess_val)
+
+    elif split == "a":
+        dataset = datasets.ImageFolder(args.imagenet_a, transform=preprocess_val)
+
+    elif split == "r":
+        dataset = datasets.ImageFolder(args.imagenet_r, transform=preprocess_val)
+
     else:
         if is_train:
             data_path = args.imagenet_train
@@ -157,8 +165,48 @@ def get_imagenet(args, preprocess_fns, split):
         num_workers=args.workers,
         sampler=sampler,
     )
-
+    print(f"is_train is: {is_train} and sampler is: {sampler}------------------------")
     return DataInfo(dataloader=dataloader, sampler=sampler)
+
+def get_cifar10c(args, preprocess_val, corruption='gaussian_noise', severity=None):
+    assert args.cifar10_c is not None, "CIFAR-10-C path must be specified"
+    
+    dataloader, dataset = get_cifar10c_dataloader(
+        root=args.cifar10_c,
+        corruption=corruption,
+        severity=severity,
+        transform=preprocess_val,
+        batch_size=args.batch_size,
+        num_workers=args.workers
+    )
+    
+    return DataInfo(dataloader, None)
+
+def get_imagenet_c(args, preprocess_val, corruption='gaussian_noise', severity=1):
+    assert args.imagenet_c is not None, "ImageNet-C path must be specified"
+    assert 1 <= severity <= 5, "Severity must be between 1 and 5"
+    
+    # Path structure: ImageNet-C/corruption_type/severity_level/
+    data_path = os.path.join(args.imagenet_c, corruption, str(severity))
+    
+    if not os.path.exists(data_path):
+        raise FileNotFoundError(f"ImageNet-C path not found: {data_path}")
+    
+    dataset = datasets.ImageFolder(data_path, transform=preprocess_val)
+    
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        sampler=None
+    )
+
+    class DataInfo:
+        def __init__(self, dataloader, num_samples):
+            self.dataloader = dataloader
+            self.num_samples = num_samples
+    
+    return DataInfo(dataloader, None)
 
 
 def count_samples(dataloader):
@@ -560,5 +608,28 @@ def get_data(args, preprocess_fns, epoch=0, tokenizer=None):
 
     if args.imagenet_v2 is not None:
         data["imagenet-v2"] = get_imagenet(args, preprocess_fns, "v2")
+
+    if args.imagenet_a is not None:
+        data["imagenet-a"] = get_imagenet(args, preprocess_fns, "a")
+
+    if args.imagenet_r is not None:
+        data["imagenet-r"] = get_imagenet(args, preprocess_fns, "r")
+
+    if args.imagenet_c is not None:
+        corruption = getattr(args, 'imagenet_c_corruption', 'gaussian_noise')
+        severity = getattr(args, 'imagenet_c_severity', 3)
+        
+        data["imagenet-c"] = get_imagenet_c(
+            args, 
+            preprocess_val,
+            corruption=corruption,
+            severity=severity
+        )
+
+    if args.cifar10_c is not None:
+        corruption = getattr(args, 'cifar10_c_corruption', 'gaussian_noise')
+        severity = getattr(args, 'cifar10_c_severity', None)
+
+        data["cifar10-c"] = get_cifar10c(args, preprocess_val, corruption=corruption, severity=severity)
 
     return data
