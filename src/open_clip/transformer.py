@@ -904,8 +904,40 @@ class VisionTransformer(nn.Module):
             self.proj = None
         return take_indices
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, mask_ratio: float = 0.0):
         x = self._embeds(x)
+        
+        mask = None
+        if mask_ratio > 0:
+            B, N, D = x.shape
+
+            cls_token = x[:, :1, :]  # [B, 1, D]
+            patch_tokens = x[:, 1:, :]  # [B, N-1, D]
+            
+            num_patches = N - 1
+            len_keep = int(num_patches * (1 - mask_ratio))
+            
+            noise = torch.rand(B, num_patches, device=x.device)
+            ids_shuffle = torch.argsort(noise, dim=1)
+            ids_keep = ids_shuffle[:, :len_keep]
+            
+            patch_tokens = torch.gather(
+                patch_tokens, dim=1, 
+                index=ids_keep.unsqueeze(-1).expand(-1, -1, D)
+            )
+            
+            x = torch.cat([cls_token, patch_tokens], dim=1)
+            
+            mask = torch.ones([B, num_patches], device=x.device)
+            mask[:, :len_keep] = 0
+            ids_restore = torch.argsort(ids_shuffle, dim=1)
+            mask = torch.gather(mask, dim=1, index=ids_restore)
+
+            if not hasattr(self, "_mask_logged"):
+                print(f"[DEBUG] Mask applied with ratio={mask_ratio}, "
+                    f"masked {mask.sum().item()} / {mask.numel()} patches")
+                self._mask_logged = True  
+        
         x = self.transformer(x)
         pooled, tokens = self._pool(x)
 
@@ -913,8 +945,12 @@ class VisionTransformer(nn.Module):
             pooled = pooled @ self.proj
 
         if self.output_tokens:
+            if mask_ratio > 0:
+                return pooled, tokens, mask
             return pooled, tokens
         
+        if mask_ratio > 0:
+            return pooled, mask
         return pooled
 
 

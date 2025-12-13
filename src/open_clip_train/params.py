@@ -26,6 +26,18 @@ class ParseKwargs(argparse.Action):
 def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--image-mask-ratio",
+        type=float,
+        default=0.0,
+        help="mask ratio for image patch masking",
+    )
+    parser.add_argument(
+        "--text-mask-ratio",
+        type=float,
+        default=0.0,
+        help="mask ratio for text token masking"
+    )
+    parser.add_argument(
         "--train-data",
         type=str,
         default=None,

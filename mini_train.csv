@@ -1,0 +1,11 @@
+filepath,title
+docs/CLIP.png,a diagram
+docs/laion_openai_compare_b32.jpg,a photo of a person
+docs/laion_clip_zeroshot_b16.png,a plot about image classification
+docs/effective_robustness.png,a chart showing robustness
+docs/scaling.png,a scaling diagram
+docs/laion_clip_zeroshot_l14.png,a graph comparing models
+docs/clip_val_loss.png,a validation loss curve
+docs/clip_recall.png,a recall graph
+docs/laion_clip_zeroshot_b16_plus_240.png,a figure about performance
+docs/clip_zeroshot.png,a zero-shot evaluation plot
